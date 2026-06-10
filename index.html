@@ -401,23 +401,34 @@ const REGIONS = [
   { name: "Nunavut",                             lat: 70.30, lng: -86.47, color: "#37474F" },
 ];
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbwlWKKbtoPzJ4--Fyf14xrmpjRnc4Cpl-3T5tYm39zX-R2ht8-svspFEA1Y1mNGM4U5/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxAmzLlOyj091ae7t62QUPQL-Ypf809nF5jO5z6Hwh6ePUDQaXXfFKcUYnFLasVbbeY/exec';
 let agents = [];
 let markers = {};
 let isSyncing = false;
 
-async function loadAgents() {
-  try {
-    const res = await fetch(GAS_URL + '?action=get');
-    const data = await res.json();
-    agents = data.agents || [];
-    if (agents.length > 0) localStorage.setItem('destiny_backup', JSON.stringify(agents));
-    console.log('Agents loaded:', agents.length);
-  } catch(e) {
-    console.error('Load error:', e);
-    const backup = localStorage.getItem('destiny_backup');
-    agents = backup ? JSON.parse(backup) : [];
-  }
+function loadAgents() {
+  return new Promise((resolve) => {
+    const cbName = 'cb_' + Date.now();
+    window[cbName] = function(data) {
+      agents = data.agents || [];
+      if (agents.length > 0) localStorage.setItem('destiny_backup', JSON.stringify(agents));
+      console.log('Agents loaded:', agents.length);
+      delete window[cbName];
+      document.getElementById('jsonp-script') && document.getElementById('jsonp-script').remove();
+      resolve();
+    };
+    const script = document.createElement('script');
+    script.id = 'jsonp-script';
+    script.src = GAS_URL + '?action=get&callback=' + cbName;
+    script.onerror = function() {
+      console.error('JSONP load error, using backup');
+      const backup = localStorage.getItem('destiny_backup');
+      agents = backup ? JSON.parse(backup) : [];
+      delete window[cbName];
+      resolve();
+    };
+    document.head.appendChild(script);
+  });
 }
 
 async function saveAgents() {
