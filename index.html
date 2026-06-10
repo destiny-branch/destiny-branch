@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Destiny Branch — Dispersion géographique</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Inter',sans-serif;font-size:15px;background:#F7F6F3;color:#1A1A1A}
+header{height:56px;background:#fff;border-bottom:1px solid #e5e5e5;display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;position:sticky;top:0;z-index:1000}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-dot{width:28px;height:28px;background:#2D4E8A;border-radius:7px;display:flex;align-items:center;justify-content:center}
+.logo-dot svg{width:14px;height:14px;fill:white}
+.logo-name{font-size:14px;font-weight:600}
+.logo-sub{font-size:11px;color:#888}
+.hstats{display:flex;align-items:center;gap:1.5rem}
+.hstat{text-align:right}
+.hstat-val{font-size:18px;font-weight:600;line-height:1}
+.hstat-label{font-size:11px;color:#888}
+.btn-admin{padding:6px 14px;font-size:12px;font-weight:600;font-family:inherit;background:transparent;border:1px solid #ddd;border-radius:8px;color:#555;cursor:pointer}
+.btn-admin:hover{background:#f5f5f5}
+.layout{display:grid;grid-template-columns:1fr 300px;height:calc(100vh - 56px)}
+#map{width:100%;height:100%;z-index:1}
+.sidebar{display:flex;flex-direction:column;border-left:1px solid #e5e5e5;overflow:hidden}
+.form-wrap{background:#fff;border-bottom:1px solid #e5e5e5;padding:1rem 1.25rem;flex-shrink:0}
+.form-title{font-size:14px;font-weight:600;margin-bottom:.85rem}
+.field{margin-bottom:.65rem}
+.field label{display:block;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+input,select{width:100%;padding:8px 10px;font-size:13px;font-family:inherit;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1A1A1A;outline:none}
+input:focus,select:focus{border-color:#2D4E8A}
+.btn-add{width:100%;padding:9px;font-size:13px;font-weight:600;font-family:inherit;background:#2D4E8A;color:white;border:none;border-radius:8px;cursor:pointer;margin-top:.5rem}
+.btn-add:hover{background:#244078}
+.msg{margin-top:.6rem;padding:7px 10px;border-radius:8px;font-size:12px;display:none}
+.msg.ok{background:#EAF5E4;color:#2D6A22;display:block}
+.msg.err{background:#FCEAEA;color:#A32222;display:block}
+.list-header{padding:.7rem 1.25rem;background:#fff;border-bottom:1px solid #e5e5e5;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.list-header span{font-size:13px;font-weight:600}
+.list-header select{width:auto;font-size:11px;padding:4px 7px}
+.agents-scroll{flex:1;overflow-y:auto;background:#fff}
+.region-hdr{padding:.5rem 1.25rem;background:#F7F6F3;border-bottom:1px solid #e5e5e5;font-size:11px;font-weight:600;color:#888;display:flex;align-items:center;justify-content:space-between;text-transform:uppercase;letter-spacing:.04em}
+.region-cnt{background:#e5e5e5;color:#666;border-radius:20px;padding:1px 7px;font-size:10px;text-transform:none;letter-spacing:0}
+.agent-row{display:flex;align-items:center;gap:10px;padding:.7rem 1.25rem;border-bottom:1px solid #f0f0f0}
+.agent-row:hover{background:#fafaf9}
+.avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
+.agent-info{flex:1;min-width:0}
+.agent-name{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.agent-city{font-size:11px;color:#888;margin-top:1px}
+.agent-phone{font-size:11px;color:#2D4E8A;margin-top:1px}
+.agent-phone a{color:#2D4E8A;text-decoration:none}
+.btn-del{background:none;border:none;cursor:pointer;color:#ccc;padding:4px;border-radius:5px;flex-shrink:0;font-size:16px;line-height:1}
+.btn-del:hover{background:#FCEAEA;color:#A32222}
+.empty{padding:2rem 1.25rem;text-align:center;color:#bbb;font-size:13px}
+.leaflet-popup-content-wrapper{border-radius:10px;padding:0;overflow:hidden}
+.leaflet-popup-content{margin:0}
+.popup-inner{padding:10px 14px;min-width:160px}
+.popup-region{font-size:12px;font-weight:600;margin-bottom:6px;color:#1A1A1A}
+.popup-agent{font-size:12px;color:#666;padding:3px 0;border-bottom:1px solid #f0f0f0}
+.popup-agent:last-child{border-bottom:none}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center}
+.modal{background:#fff;border-radius:14px;width:90%;max-width:480px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-hdr{padding:1rem 1.5rem;border-bottom:1px solid #e5e5e5;display:flex;align-items:center;justify-content:space-between}
+.modal-hdr h2{font-size:16px;font-weight:600}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#999;padding:2px 8px}
+.modal-body{padding:1.25rem 1.5rem;overflow-y:auto;flex:1}
+.modal-field{margin-bottom:.75rem}
+.modal-field label{display:block;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:1rem}
+.btn-cancel{padding:9px;font-size:13px;font-weight:600;font-family:inherit;background:#f5f5f5;color:#444;border:1px solid #ddd;border-radius:8px;cursor:pointer}
+.btn-save{padding:9px;font-size:13px;font-weight:600;font-family:inherit;background:#2D4E8A;color:white;border:none;border-radius:8px;cursor:pointer}
+.admin-toolbar{padding:.7rem 1.5rem;background:#F7F6F3;border-bottom:1px solid #e5e5e5;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.admin-toolbar span{font-size:13px;font-weight:600;flex:1}
+.admin-toolbar input{width:160px;padding:5px 10px;font-size:12px}
+.btn-csv{padding:5px 12px;font-size:12px;font-weight:600;font-family:inherit;background:#EAF5E4;color:#2D6A22;border:1px solid #C5E0B8;border-radius:7px;cursor:pointer}
+.admin-agent{display:flex;align-items:center;gap:10px;padding:.75rem 1.5rem;border-bottom:1px solid #f0f0f0}
+.admin-agent:hover{background:#fafaf9}
+.admin-info{flex:1;min-width:0}
+.admin-name{font-size:14px;font-weight:500}
+.admin-detail{font-size:12px;color:#888;margin-top:2px}
+.admin-btns{display:flex;gap:6px;flex-shrink:0}
+.btn-edit{padding:5px 12px;font-size:12px;font-weight:600;font-family:inherit;background:#E8EDF7;color:#2D4E8A;border:1px solid #C0CEED;border-radius:7px;cursor:pointer}
+.btn-remove{padding:5px 12px;font-size:12px;font-weight:600;font-family:inherit;background:#FCEAEA;color:#A32222;border:1px solid #F5C0C0;border-radius:7px;cursor:pointer}
+.loader{position:fixed;inset:0;background:rgba(247,246,243,.9);display:flex;align-items:center;justify-content:center;z-index:9999;font-size:14px;color:#888}
+.spinner{width:28px;height:28px;border:3px solid #e0e0e0;border-top-color:#2D4E8A;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:700px){.layout{grid-template-columns:1fr;grid-template-rows:50vh 1fr}.hstats .hstat:not(:last-child){display:none}}
+</style>
+</head>
+<body>
+
+<div class="loader" id="loader"><div><div class="spinner"></div>Chargement...</div></div>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/></svg></div>
+    <div><div class="logo-name">Destiny Branch</div><div class="logo-sub">Dispersion géographique des conseillers</div></div>
+  </div>
+  <div class="hstats">
+    <div class="hstat"><div class="hstat-val" id="h-total">0</div><div class="hstat-label">Conseillers</div></div>
+    <div class="hstat"><div class="hstat-val" id="h-regions">0</div><div class="hstat-label">Régions</div></div>
+    <button class="btn-admin" onclick="openAdmin()">⚙ Admin</button>
+  </div>
+</header>
+
+<div class="layout">
+  <div id="map"></div>
+  <div class="sidebar">
+    <div class="form-wrap">
+      <div class="form-title">Ajouter mon profil</div>
+      <div class="field"><label>Prénom et nom *</label><input id="f-name" type="text" placeholder="ex. Jason Bergeron" maxlength="60"/></div>
+      <div class="field"><label>Ville *</label><input id="f-city" type="text" placeholder="ex. Mascouche, Laval..." maxlength="60"/></div>
+      <div class="field"><label>Région *</label>
+        <select id="f-region">
+          <option value="">Choisir une région...</option>
+          <optgroup label="Québec">
+            <option>Montréal / Laval / Rive-Nord</option>
+            <option>Québec / Chaudière-Appalaches</option>
+            <option>Estrie / Montérégie</option>
+            <option>Mauricie / Centre-du-Québec</option>
+            <option>Saguenay / Lac-Saint-Jean</option>
+            <option>Outaouais / Abitibi</option>
+            <option>Lanaudière / Laurentides</option>
+            <option>Bas-Saint-Laurent / Gaspésie</option>
+            <option>Côte-Nord / Nord-du-Québec</option>
+          </optgroup>
+          <optgroup label="Autres provinces">
+            <option>Ontario</option>
+            <option>Colombie-Britannique</option>
+            <option>Alberta</option>
+            <option>Manitoba</option>
+            <option>Saskatchewan</option>
+            <option>Nouveau-Brunswick</option>
+            <option>Nouvelle-Écosse</option>
+            <option>Île-du-Prince-Édouard</option>
+            <option>Terre-Neuve-et-Labrador</option>
+            <option>Territoires du Nord-Ouest</option>
+            <option>Yukon</option>
+            <option>Nunavut</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="field"><label>WhatsApp (optionnel)</label><input id="f-phone" type="tel" placeholder="ex. 514-555-0123" maxlength="20"/></div>
+      <button class="btn-add" id="btn-add">+ Ajouter</button>
+      <div class="msg" id="msg"></div>
+    </div>
+    <div class="list-header">
+      <span id="list-title">Tous les conseillers</span>
+      <select id="filter" onchange="render()">
+        <option value="">Toutes</option>
+        <optgroup label="Québec">
+          <option>Montréal / Laval / Rive-Nord</option>
+          <option>Québec / Chaudière-Appalaches</option>
+          <option>Estrie / Montérégie</option>
+          <option>Mauricie / Centre-du-Québec</option>
+          <option>Saguenay / Lac-Saint-Jean</option>
+          <option>Outaouais / Abitibi</option>
+          <option>Lanaudière / Laurentides</option>
+          <option>Bas-Saint-Laurent / Gaspésie</option>
+          <option>Côte-Nord / Nord-du-Québec</option>
+        </optgroup>
+        <optgroup label="Autres provinces">
+          <option>Ontario</option>
+          <option>Colombie-Britannique</option>
+          <option>Alberta</option>
+          <option>Manitoba</option>
+          <option>Saskatchewan</option>
+          <option>Nouveau-Brunswick</option>
+          <option>Nouvelle-Écosse</option>
+          <option>Île-du-Prince-Édouard</option>
+          <option>Terre-Neuve-et-Labrador</option>
+          <option>Territoires du Nord-Ouest</option>
+          <option>Yukon</option>
+          <option>Nunavut</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="agents-scroll" id="agents-list"></div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="overlay" id="edit-overlay">
+  <div class="modal">
+    <div class="modal-hdr"><h2>Modifier</h2><button class="modal-close" id="edit-close">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-id"/>
+      <div class="modal-field"><label>Nom</label><input id="edit-name" type="text" maxlength="60"/></div>
+      <div class="modal-field"><label>Ville</label><input id="edit-city" type="text" maxlength="60"/></div>
+      <div class="modal-field"><label>Région</label>
+        <select id="edit-region">
+          <optgroup label="Québec">
+            <option>Montréal / Laval / Rive-Nord</option>
+            <option>Québec / Chaudière-Appalaches</option>
+            <option>Estrie / Montérégie</option>
+            <option>Mauricie / Centre-du-Québec</option>
+            <option>Saguenay / Lac-Saint-Jean</option>
+            <option>Outaouais / Abitibi</option>
+            <option>Lanaudière / Laurentides</option>
+            <option>Bas-Saint-Laurent / Gaspésie</option>
+            <option>Côte-Nord / Nord-du-Québec</option>
+          </optgroup>
+          <optgroup label="Autres provinces">
+            <option>Ontario</option>
+            <option>Colombie-Britannique</option>
+            <option>Alberta</option>
+            <option>Manitoba</option>
+            <option>Saskatchewan</option>
+            <option>Nouveau-Brunswick</option>
+            <option>Nouvelle-Écosse</option>
+            <option>Île-du-Prince-Édouard</option>
+            <option>Terre-Neuve-et-Labrador</option>
+            <option>Territoires du Nord-Ouest</option>
+            <option>Yukon</option>
+            <option>Nunavut</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="modal-field"><label>WhatsApp</label><input id="edit-phone" type="tel" maxlength="20"/></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="edit-cancel">Annuler</button>
+        <button class="btn-save" id="edit-save">Sauvegarder</button>
+      </div>
+      <div class="msg" id="edit-msg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN MODAL -->
+<div class="overlay" id="admin-overlay">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-hdr"><h2>Administration</h2><button class="modal-close" id="admin-close">✕</button></div>
+    <div id="admin-login" style="padding:1.5rem;">
+      <p style="font-size:14px;color:#666;margin-bottom:1rem;">Entrez le mot de passe administrateur.</p>
+      <input id="admin-pwd" type="password" placeholder="Mot de passe..." style="margin-bottom:.75rem;"/>
+      <button class="btn-save" style="width:100%;padding:10px;" id="admin-submit">Accéder</button>
+      <div class="msg" id="admin-pwd-msg"></div>
+    </div>
+    <div id="admin-panel" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="admin-toolbar">
+        <span id="admin-count"></span>
+        <input type="text" id="admin-search" placeholder="Rechercher..." oninput="renderAdmin()"/>
+        <button class="btn-csv" onclick="exportCSV()">⬇ CSV</button>
+      </div>
+      <div style="overflow-y:auto;flex:1;" id="admin-list"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const SUPABASE_URL = 'https://uiusneileezofgocgmoz.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpdXNuZWlsZWV6b2Znb2NnbW96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMTY1ODAsImV4cCI6MjA5NjY5MjU4MH0.BAvvWqAR2KvH81uFcKhShKKJgVz84y9VFnnNqB9IYsY';
+const ADMIN_PWD = 'Hamburger1';
+
+const REGIONS = [
+  {name:"Montréal / Laval / Rive-Nord",lat:45.55,lng:-73.65,color:"#2D4E8A"},
+  {name:"Québec / Chaudière-Appalaches",lat:46.85,lng:-71.20,color:"#0F6E56"},
+  {name:"Estrie / Montérégie",lat:45.40,lng:-72.50,color:"#BA7517"},
+  {name:"Mauricie / Centre-du-Québec",lat:46.50,lng:-72.80,color:"#185FA5"},
+  {name:"Saguenay / Lac-Saint-Jean",lat:48.40,lng:-71.10,color:"#993556"},
+  {name:"Outaouais / Abitibi",lat:48.10,lng:-77.80,color:"#993C1D"},
+  {name:"Lanaudière / Laurentides",lat:46.10,lng:-73.90,color:"#3B6D11"},
+  {name:"Bas-Saint-Laurent / Gaspésie",lat:48.00,lng:-67.50,color:"#5F5E5A"},
+  {name:"Côte-Nord / Nord-du-Québec",lat:51.00,lng:-72.00,color:"#534AB7"},
+  {name:"Ontario",lat:51.25,lng:-85.32,color:"#A32D2D"},
+  {name:"Colombie-Britannique",lat:53.72,lng:-127.65,color:"#0C447C"},
+  {name:"Alberta",lat:53.93,lng:-116.57,color:"#633806"},
+  {name:"Manitoba",lat:53.76,lng:-98.81,color:"#27500A"},
+  {name:"Saskatchewan",lat:52.94,lng:-106.45,color:"#6D3A00"},
+  {name:"Nouveau-Brunswick",lat:46.56,lng:-66.46,color:"#880E4F"},
+  {name:"Nouvelle-Écosse",lat:44.68,lng:-63.74,color:"#006064"},
+  {name:"Île-du-Prince-Édouard",lat:46.51,lng:-63.41,color:"#33691E"},
+  {name:"Terre-Neuve-et-Labrador",lat:53.13,lng:-57.66,color:"#3E2723"},
+  {name:"Territoires du Nord-Ouest",lat:64.82,lng:-124.85,color:"#1A237E"},
+  {name:"Yukon",lat:64.28,lng:-135.00,color:"#004D40"},
+  {name:"Nunavut",lat:70.30,lng:-86.47,color:"#37474F"}
+];
+
+let agents = [];
+let mapMarkers = {};
+let adminUnlocked = false;
+
+// MAP
+const map = L.map('map',{center:[56,-96],zoom:4});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+  attribution:'© OpenStreetMap © CARTO',subdomains:'abcd',maxZoom:19
+}).addTo(map);
+
+// DATA
+function loadFromBackup(){
+  try{ return JSON.parse(localStorage.getItem('db_agents')||'[]'); }catch(e){ return []; }
+}
+function saveToBackup(){
+  localStorage.setItem('db_agents', JSON.stringify(agents));
+}
+
+async function loadAgents(){
+  try{
+    const res = await fetch(SUPABASE_URL+'/rest/v1/agents?select=*&order=created_at.asc', {
+      headers:{
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer '+SUPABASE_KEY
+      }
+    });
+    const data = await res.json();
+    if(Array.isArray(data)){
+      agents = data;
+      if(agents.length > 0) saveToBackup();
+      console.log('Loaded:', agents.length, 'agents');
+    }
+  }catch(e){
+    console.error('Load error:', e);
+    agents = loadFromBackup();
+  }
+}
+
+async function saveAgent(agent){
+  try{
+    const res = await fetch(SUPABASE_URL+'/rest/v1/agents', {
+      method:'POST',
+      headers:{
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer '+SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(agent)
+    });
+    const data = await res.json();
+    return data[0];
+  }catch(e){ console.error('Save error:', e); return null; }
+}
+
+async function updateAgent(id, updates){
+  try{
+    await fetch(SUPABASE_URL+'/rest/v1/agents?id=eq.'+id, {
+      method:'PATCH',
+      headers:{
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer '+SUPABASE_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(updates)
+    });
+  }catch(e){ console.error('Update error:', e); }
+}
+
+async function deleteAgent(id){
+  try{
+    await fetch(SUPABASE_URL+'/rest/v1/agents?id=eq.'+id, {
+      method:'DELETE',
+      headers:{
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer '+SUPABASE_KEY
+      }
+    });
+  }catch(e){ console.error('Delete error:', e); }
+}
+
+function saveAgents(){ saveToBackup(); }
+
+// GEOCODE
+async function geocodeCity(city, region){
+  try{
+    const isQc = !['Ontario','Colombie-Britannique','Alberta','Manitoba','Saskatchewan',
+      'Nouveau-Brunswick','Nouvelle-Écosse','Île-du-Prince-Édouard',
+      'Terre-Neuve-et-Labrador','Territoires du Nord-Ouest','Yukon','Nunavut'].includes(region);
+    const q = isQc ? city+', Québec, Canada' : city+', Canada';
+    const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q));
+    const d = await r.json();
+    if(d && d.length > 0) return {lat:parseFloat(d[0].lat), lng:parseFloat(d[0].lon)};
+  }catch(e){}
+  return null;
+}
+
+// MAP MARKERS
+function getCount(name){ return agents.filter(a=>a.region===name).length; }
+function markerSize(n){ return n===0?18:n<3?26:n<6?34:n<10?42:50; }
+
+function updateMarkers(){
+  Object.values(mapMarkers).forEach(m=>{
+    if(Array.isArray(m)) m.forEach(x=>map.removeLayer(x));
+    else map.removeLayer(m);
+  });
+  mapMarkers = {};
+
+  REGIONS.forEach(r=>{
+    const count = getCount(r.name);
+    const size = markerSize(count);
+    const op = count===0 ? 0.15 : 1;
+    const icon = L.divIcon({className:'',html:`<div style="width:${size}px;height:${size}px;border-radius:50%;background:${r.color};border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;color:white;font-size:${count>0?Math.max(9,size/3.5):0}px;font-weight:600;font-family:Inter,sans-serif;opacity:${op};cursor:pointer;">${count>0?count:''}</div>`,iconSize:[size,size],iconAnchor:[size/2,size/2],popupAnchor:[0,-size/2]});
+    const regionAgents = agents.filter(a=>a.region===r.name);
+    const popup = `<div class="popup-inner"><div class="popup-region">${r.name}</div>${regionAgents.length===0?'<div style="font-size:12px;color:#bbb;">Aucun conseiller</div>':regionAgents.map(a=>`<div class="popup-agent"><strong>${a.name}</strong>${a.city?' — '+a.city:''}${a.phone?' · '+a.phone:''}</div>`).join('')}</div>`;
+    const m = L.marker([r.lat,r.lng],{icon}).bindPopup(popup,{maxWidth:240}).addTo(map);
+    m.on('click',()=>{ document.getElementById('filter').value=r.name; render(); });
+    mapMarkers[r.name] = m;
+  });
+
+  mapMarkers['__pins__'] = [];
+  agents.forEach(a=>{
+    if(!a.lat||!a.lng) return;
+    const rd = REGIONS.find(r=>r.name===a.region);
+    const color = rd?rd.color:'#2D4E8A';
+    const ini = (a.name||'').trim().split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    const pin = L.divIcon({className:'',html:`<div style="position:relative;width:30px;height:38px;cursor:pointer;"><div style="width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${color};border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3);position:absolute;top:0;left:0;"></div><div style="position:absolute;top:5px;left:5px;width:20px;height:20px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:${color};font-family:Inter,sans-serif;">${ini}</div></div>`,iconSize:[30,38],iconAnchor:[15,38],popupAnchor:[0,-40]});
+    const pp = `<div class="popup-inner"><div class="popup-region" style="font-size:14px;">${a.name}</div><div style="font-size:12px;color:#666;margin-top:3px;">📍 ${a.city||''}${a.region?' · '+a.region.split('/')[0].trim():''}</div>${a.phone?`<div style="font-size:12px;color:#2D4E8A;margin-top:2px;">📱 ${a.phone}</div>`:''}</div>`;
+    const mk = L.marker([a.lat,a.lng],{icon:pin}).bindPopup(pp,{maxWidth:220}).addTo(map);
+    mapMarkers['__pins__'].push(mk);
+  });
+}
+
+// RENDER LIST
+function initials(name){ return (name||'').trim().split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
+function rcColor(region){
+  const i = REGIONS.findIndex(r=>r.name===region);
+  const colors = ['#E8EDF7:#1E3A6E','#E1F5EE:#085041','#FAEEDA:#633806','#E6F1FB:#0C447C','#FBEAF0:#72243E','#FAECE7:#712B13','#EAF3DE:#27500A','#F1EFE8:#444441','#EEEDFE:#3C3489','#FCEBEB:#791F1F','#E3F2FD:#0D47A1','#FFF3E0:#6D3A00','#E8F5E9:#1B5E20','#FFF8E1:#6D4C00','#FCE4EC:#880E4F','#E0F7FA:#006064','#F9FBE7:#33691E','#EFEBE9:#3E2723','#E8EAF6:#1A237E','#E0F2F1:#004D40','#ECEFF1:#37474F'];
+  const c = i>=0 && i<colors.length ? colors[i] : colors[0];
+  const [bg,tx] = c.split(':');
+  return {bg,tx};
+}
+
+function render(){
+  const filter = document.getElementById('filter').value;
+  const filtered = filter ? agents.filter(a=>a.region===filter) : agents;
+  document.getElementById('h-total').textContent = agents.length;
+  document.getElementById('h-regions').textContent = new Set(agents.map(a=>a.region)).size;
+  document.getElementById('list-title').textContent = filter ? filter.split('/')[0].trim() : 'Tous les conseillers';
+  const container = document.getElementById('agents-list');
+  if(filtered.length===0){ container.innerHTML='<div class="empty">Aucun conseiller'+(filter?' dans cette région.':' inscrit pour l\'instant.')+'</div>'; return; }
+  const byRegion = {};
+  if(!filter){ REGIONS.forEach(r=>{ byRegion[r.name]=[]; }); filtered.forEach(a=>{ if(!byRegion[a.region]) byRegion[a.region]=[]; byRegion[a.region].push(a); }); }
+  else { byRegion[filter]=filtered; }
+  let html='';
+  Object.entries(byRegion).forEach(([region,list])=>{
+    if(list.length===0) return;
+    html+=`<div class="region-hdr"><span>${region}</span><span class="region-cnt">${list.length}</span></div>`;
+    list.forEach(a=>{
+      const {bg,tx} = rcColor(a.region);
+      const phone = (a.phone||'').replace(/\D/g,'');
+      html+=`<div class="agent-row"><div class="avatar" style="background:${bg};color:${tx};">${initials(a.name)}</div><div class="agent-info"><div class="agent-name">${a.name}</div><div class="agent-city">📍 ${a.city||''}</div>${a.phone?`<div class="agent-phone"><a href="https://wa.me/1${phone}" target="_blank">📱 ${a.phone}</a></div>`:''}</div><button class="btn-del" onclick="removeAgent('${a.id}')">×</button></div>`;
+    });
+  });
+  container.innerHTML = html;
+}
+
+// ADD
+async function addAgent(){
+  const name = document.getElementById('f-name').value.trim();
+  const city = document.getElementById('f-city').value.trim();
+  const region = document.getElementById('f-region').value;
+  const phone = document.getElementById('f-phone').value.trim();
+  const msg = document.getElementById('msg');
+  if(!name||!city||!region){ showMsg(msg,'err','Nom, ville et région requis.'); return; }
+  if(agents.find(a=>a.name.toLowerCase()===name.toLowerCase())){ showMsg(msg,'err','Ce nom est déjà inscrit.'); return; }
+  showMsg(msg,'ok','📍 Localisation de '+city+'...');
+  const coords = await geocodeCity(city, region);
+  const newAgent = {name,city,region,phone,lat:coords?coords.lat:null,lng:coords?coords.lng:null};
+  const saved = await saveAgent(newAgent);
+  if(saved) agents.push(saved);
+  else agents.push({id:Date.now().toString(),...newAgent});
+  saveToBackup(); updateMarkers(); render();
+  document.getElementById('f-name').value='';
+  document.getElementById('f-city').value='';
+  document.getElementById('f-region').value='';
+  document.getElementById('f-phone').value='';
+  showMsg(msg,'ok',coords?'✓ Bienvenue '+name+' ! Placé sur '+city+'.':'✓ Bienvenue '+name+' !');
+  if(coords) map.flyTo([coords.lat,coords.lng],10,{duration:1.5});
+  else{ const rd=REGIONS.find(r=>r.name===region); if(rd) map.flyTo([rd.lat,rd.lng],6,{duration:1.2}); }
+}
+
+async function removeAgent(id){
+  if(!confirm('Retirer ce conseiller?')) return;
+  await deleteAgent(id);
+  agents = agents.filter(a=>a.id!==id);
+  saveToBackup(); updateMarkers(); render(); if(adminUnlocked) renderAdmin();
+}
+
+function showMsg(el, type, text){
+  el.className='msg '+type; el.textContent=text;
+  setTimeout(()=>{ el.className='msg'; el.style.display='none'; }, 4000);
+}
+
+// EDIT
+function openEdit(id){
+  const a = agents.find(x=>x.id===id); if(!a) return;
+  document.getElementById('edit-id').value=id;
+  document.getElementById('edit-name').value=a.name||'';
+  document.getElementById('edit-city').value=a.city||'';
+  document.getElementById('edit-region').value=a.region||'';
+  document.getElementById('edit-phone').value=a.phone||'';
+  document.getElementById('edit-msg').className='msg';
+  document.getElementById('edit-overlay').style.display='flex';
+}
+
+async function saveEdit(){
+  const id = document.getElementById('edit-id').value;
+  const name = document.getElementById('edit-name').value.trim();
+  const city = document.getElementById('edit-city').value.trim();
+  const region = document.getElementById('edit-region').value;
+  const phone = document.getElementById('edit-phone').value.trim();
+  const msg = document.getElementById('edit-msg');
+  if(!name||!city||!region){ showMsg(msg,'err','Tous les champs requis.'); return; }
+  const idx = agents.findIndex(a=>a.id===id); if(idx===-1) return;
+  showMsg(msg,'ok','Mise à jour...');
+  let lat=agents[idx].lat, lng=agents[idx].lng;
+  if(city!==agents[idx].city||region!==agents[idx].region){
+    const coords = await geocodeCity(city,region);
+    if(coords){ lat=coords.lat; lng=coords.lng; }
+  }
+  await updateAgent(agents[idx].id, {name,city,region,phone,lat,lng});
+  agents[idx]={...agents[idx],name,city,region,phone,lat,lng};
+  saveToBackup(); updateMarkers(); render(); renderAdmin();
+  showMsg(msg,'ok','✓ Sauvegardé!');
+  setTimeout(()=>{ document.getElementById('edit-overlay').style.display='none'; }, 1200);
+}
+
+// ADMIN
+function openAdmin(){
+  document.getElementById('admin-overlay').style.display='flex';
+  if(!adminUnlocked){
+    document.getElementById('admin-login').style.display='block';
+    document.getElementById('admin-panel').style.display='none';
+    setTimeout(()=>document.getElementById('admin-pwd').focus(),100);
+  } else {
+    document.getElementById('admin-login').style.display='none';
+    document.getElementById('admin-panel').style.display='flex';
+    renderAdmin();
+  }
+}
+
+function checkAdmin(){
+  const pwd = document.getElementById('admin-pwd').value;
+  const msg = document.getElementById('admin-pwd-msg');
+  if(pwd===ADMIN_PWD){
+    adminUnlocked=true;
+    document.getElementById('admin-login').style.display='none';
+    document.getElementById('admin-panel').style.display='flex';
+    renderAdmin();
+  } else {
+    showMsg(msg,'err','Mot de passe incorrect.');
+    document.getElementById('admin-pwd').value='';
+  }
+}
+
+function renderAdmin(){
+  const search=(document.getElementById('admin-search').value||'').toLowerCase();
+  const filtered=agents.filter(a=>a.name.toLowerCase().includes(search)||(a.city||'').toLowerCase().includes(search)||(a.region||'').toLowerCase().includes(search));
+  document.getElementById('admin-count').textContent=filtered.length+' / '+agents.length+' conseillers';
+  const list=document.getElementById('admin-list');
+  if(filtered.length===0){ list.innerHTML='<div class="empty">Aucun résultat</div>'; return; }
+  list.innerHTML=filtered.map(a=>`<div class="admin-agent"><div class="admin-info"><div class="admin-name">${a.name}</div><div class="admin-detail">📍 ${a.city||'—'} · ${a.region}${a.phone?' · 📱 '+a.phone:''}</div><div class="admin-detail" style="color:#bbb;font-size:11px;">${a.addedAt?new Date(a.addedAt).toLocaleDateString('fr-CA'):''}</div></div><div class="admin-btns"><button class="btn-edit" onclick="openEdit('${a.id}')">Modifier</button><button class="btn-remove" onclick="removeAgent('${a.id}')">Retirer</button></div></div>`).join('');
+}
+
+function exportCSV(){
+  const rows=[['Nom','Ville','Région','WhatsApp','Date'],...agents.map(a=>[a.name,a.city||'',a.region,a.phone||'',a.addedAt?new Date(a.addedAt).toLocaleDateString('fr-CA'):''])];
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const b=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const u=URL.createObjectURL(b);
+  const a=document.createElement('a'); a.href=u; a.download='destiny-branch.csv'; a.click(); URL.revokeObjectURL(u);
+}
+
+// EVENTS
+document.getElementById('btn-add').addEventListener('click', addAgent);
+document.getElementById('admin-close').addEventListener('click',()=>document.getElementById('admin-overlay').style.display='none');
+document.getElementById('edit-close').addEventListener('click',()=>document.getElementById('edit-overlay').style.display='none');
+document.getElementById('edit-cancel').addEventListener('click',()=>document.getElementById('edit-overlay').style.display='none');
+document.getElementById('edit-save').addEventListener('click', saveEdit);
+document.getElementById('admin-submit').addEventListener('click', checkAdmin);
+document.getElementById('admin-pwd').addEventListener('keydown',e=>{ if(e.key==='Enter') checkAdmin(); });
+document.getElementById('admin-overlay').addEventListener('click',e=>{ if(e.target===document.getElementById('admin-overlay')) document.getElementById('admin-overlay').style.display='none'; });
+document.getElementById('edit-overlay').addEventListener('click',e=>{ if(e.target===document.getElementById('edit-overlay')) document.getElementById('edit-overlay').style.display='none'; });
+
+// INIT
+async function init(){
+  await loadAgents();
+  updateMarkers();
+  render();
+  document.getElementById('loader').style.display='none';
+  setInterval(async()=>{ await loadAgents(); updateMarkers(); render(); }, 30000);
+}
+init();
+</script>
+</body>
+</html>
