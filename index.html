@@ -485,6 +485,8 @@ function showMsg(el, type, text){
 // EDIT
 function openEdit(id){
   const a = agents.find(x=>x.id===id); if(!a) return;
+  const a = agents.find(x=>x.id===id); if(!a) return;
+  document.getElementById('admin-overlay').style.display='none';
   document.getElementById('edit-id').value=id;
   document.getElementById('edit-name').value=a.name||'';
   document.getElementById('edit-city').value=a.city||'';
