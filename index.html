@@ -439,7 +439,7 @@ function render(){
     list.forEach(a=>{
       const {bg,tx} = rcColor(a.region);
       const phone = (a.phone||'').replace(/\D/g,'');
-      html+=`<div class="agent-row"><div class="avatar" style="background:${bg};color:${tx};">${initials(a.name)}</div><div class="agent-info"><div class="agent-name">${a.name}</div><div class="agent-city">📍 ${a.city||''}</div>${a.phone?`<div class="agent-phone"><a href="https://wa.me/1${phone}" target="_blank">📱 ${a.phone}</a></div>`:''}</div><button class="btn-del" onclick="removeAgent('${a.id}')">×</button></div>`;
+html+=`<div class="agent-row"><div class="avatar" style="background:${bg};color:${tx};">${initials(a.name)}</div><div class="agent-info"><div class="agent-name">${a.name}</div><div class="agent-city">📍 ${a.city||''}</div>${a.phone?`<div class="agent-phone"><a href="https://wa.me/1${phone}" target="_blank">📱 ${a.phone}</a></div>`:''}</div></div>`;
     });
   });
   container.innerHTML = html;
