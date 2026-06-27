@@ -110,7 +110,7 @@ input:focus,select:focus{border-color:#2D4E8A}
     <div class="form-wrap">
       <div class="form-title">Ajouter mon profil</div>
       <div class="field"><label>Prénom et nom *</label><input id="f-name" type="text" placeholder="ex. Jason Bergeron" maxlength="60"/></div>
-      <div class="field"><label>Ville *</label><input id="f-city" type="text" placeholder="ex. Mascouche, Laval..." maxlength="60"/></div>
+      <div class="field"><label>Ville *</label><input id="f-city" type="text" placeholder="ex. Mascouche, Laval..." maxlength="60" onblur="autoRegion()"/>
       <div class="field"><label>Région *</label>
         <select id="f-region">
           <option value="">Choisir une région...</option>
@@ -361,7 +361,25 @@ async function deleteAgent(id){
 
 function saveAgents(){ saveToBackup(); }
 
-// GEOCODE
+async function autoRegion(){
+  const city = document.getElementById('f-city').value.trim();
+  if(!city) return;
+  const current = document.getElementById('f-region').value;
+  if(current) return;
+  try{
+    const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(city+', Canada'));
+    const d = await r.json();
+    if(!d||!d.length) return;
+    const lat=parseFloat(d[0].lat), lng=parseFloat(d[0].lon);
+    let best=null, bestDist=Infinity;
+    REGIONS.forEach(rg=>{
+      const dist=Math.pow(rg.lat-lat,2)+Math.pow(rg.lng-lng,2);
+      if(dist<bestDist){bestDist=dist;best=rg.name;}
+    });
+    if(best) document.getElementById('f-region').value=best;
+  }catch(e){}
+}
+  // GEOCODE
 async function geocodeCity(city, region){
   try{
     const isQc = !['Ontario','Colombie-Britannique','Alberta','Manitoba','Saskatchewan',
